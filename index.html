@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Repeat — a simple to-do list</title>
+<meta name="description" content="A minimalist to-do list with recurring tasks, stored entirely on your device." />
+
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#3A4A3E" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Repeat" />
+
+<style>
+  :root{
+    --paper: #FAFAF8;
+    --ink: #22241F;
+    --ink-soft: #55584F;
+    --muted: #9A968C;
+    --line: #E7E3D8;
+    --pine: #3A4A3E;
+    --pine-dark: #2C3A31;
+    --sage: #7C9885;
+    --sage-bg: #EAF0EB;
+    --danger: #B5533C;
+    --danger-bg: #F7EAE6;
+    --radius: 14px;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body{ height: 100%; }
+
+  body{
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: contain;
+  }
+
+  .app{
+    max-width: 560px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) 24px calc(140px + env(safe-area-inset-bottom));
+    position: relative;
+  }
+
+  header{
+    padding: 48px 0 24px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .date{
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
+    font-size: clamp(30px, 7vw, 40px);
+    line-height: 1.1;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .status{ margin: 0; font-size: 15px; color: var(--muted); }
+  .status strong{ color: var(--ink-soft); font-weight: 600; }
+
+  main{ padding-top: 4px; }
+
+  .day-section{ border-bottom: 1px solid var(--line); }
+  .day-section:last-child{ border-bottom: none; }
+  .day-section.overdue .day-heading{ color: var(--danger); }
+
+  .day-heading{
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 22px 0 4px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+
+  .day-heading .count{ font-weight: 400; font-size: 13px; color: var(--muted); }
+
+  ul.list{ list-style: none; margin: 0; padding: 0 0 6px; }
+
+  .nothing{
+    padding: 6px 0 14px;
+    font-size: 13.5px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .task{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  ul.list > .task:first-child{ border-top: none; }
+
+  .check{
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid var(--muted);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  .check:active{ transform: scale(0.92); }
+
+  .check svg{
+    width: 13px;
+    height: 13px;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    color: var(--paper);
+  }
+
+  .task.done .check{ background: var(--pine); border-color: var(--pine); }
+  .task.done .check svg{ opacity: 1; transform: scale(1); }
+
+  .text{
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 16px;
+    line-height: 1.35;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  .task.done .text{
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--line);
+  }
+
+  .badge{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--pine-dark);
+    background: var(--sage-bg);
+    border-radius: 999px;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+
+  .badge svg{ width: 10px; height: 10px; }
+
+  .day-section.overdue .task .badge{ color: var(--danger); background: var(--danger-bg); }
+
+  .remove{
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+
+  .remove:hover{ opacity: 1; background: var(--line); }
+  .remove svg{ width: 14px; height: 14px; }
+
+  .empty{
+    padding: 40px 0 20px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .clear-row{ padding: 16px 0 20px; }
+
+  .clear-btn{
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+
+  .clear-btn:hover{ color: var(--ink-soft); }
+
+  .fab{
+    position: fixed;
+    right: max(24px, calc(24px + env(safe-area-inset-right)));
+    bottom: max(28px, calc(28px + env(safe-area-inset-bottom)));
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: var(--pine);
+    color: var(--paper);
+    border: none;
+    box-shadow: 0 10px 24px rgba(44, 58, 49, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    z-index: 20;
+  }
+
+  .fab:hover{ background: var(--pine-dark); box-shadow: 0 12px 28px rgba(44, 58, 49, 0.42); }
+  .fab:active{ transform: scale(0.94); }
+  .fab svg{ width: 26px; height: 26px; }
+
+  .backdrop{
+    position: fixed;
+    inset: 0;
+    background: rgba(34, 36, 31, 0.36);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 30;
+  }
+
+  .backdrop.open{ opacity: 1; pointer-events: auto; }
+
+  .sheet{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--paper);
+    border-radius: 22px 22px 0 0;
+    padding: 26px 24px calc(28px + env(safe-area-inset-bottom));
+    max-width: 560px;
+    margin: 0 auto;
+    max-height: 86dvh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(.32,.72,0,1);
+    z-index: 31;
+    box-shadow: 0 -12px 40px rgba(34,36,31,0.18);
+  }
+
+  .sheet.open{ transform: translateY(0); }
+
+  .sheet-handle{
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    margin: 0 auto 20px;
+  }
+
+  .sheet h2{ margin: 0 0 16px; font-size: 19px; font-weight: 600; }
+
+  .field input[type="text"]{
+    width: 100%;
+    font-size: 16px;
+    padding: 13px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    outline: none;
+  }
+
+  .field input[type="text"]:focus{ border-color: var(--pine); }
+
+  .sub-label{
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 20px 0 8px;
+  }
+
+  .chip-row{ display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .chip{
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .chip.active{
+    background: var(--sage-bg);
+    border-color: var(--sage);
+    color: var(--pine-dark);
+    font-weight: 600;
+  }
+
+  input[type="date"]{
+    margin-top: 10px;
+    width: 100%;
+    font-size: 15px;
+    padding: 11px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    outline: none;
+  }
+
+  input[type="date"]:focus{ border-color: var(--pine); }
+
+  .sheet-actions{ display: flex; gap: 10px; margin-top: 24px; }
+
+  .btn{
+    flex: 1;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .btn.primary{ background: var(--pine); color: var(--paper); }
+  .btn.primary:disabled{ background: var(--line); color: var(--muted); cursor: not-allowed; }
+  .btn.primary:not(:disabled):hover{ background: var(--pine-dark); }
+
+  .btn.ghost{ background: transparent; color: var(--muted); }
+  .btn.ghost:hover{ color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition: none !important; } }
+
+  @media (max-width: 380px){ .app{ padding-left: 18px; padding-right: 18px; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <p class="date" id="dateHeading"></p>
+    <p class="status" id="statusLine"></p>
+  </header>
+
+  <main id="agenda"></main>
+
+  <p class="empty" id="emptyState" hidden>Nothing here yet. Add your first task with the button in the corner.</p>
+  <div class="clear-row" id="clearRow" hidden>
+    <button class="clear-btn" id="clearCompleted">Clear completed one-off tasks</button>
+  </div>
+</div>
+
+<button class="fab" id="openAdd" aria-label="Add task">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+</button>
+
+<div class="backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-handle"></div>
+  <h2 id="sheetTitle">New task</h2>
+  <div class="field">
+    <input type="text" id="taskInput" placeholder="What do you need to do?" maxlength="140" autocomplete="off" />
+  </div>
+
+  <p class="sub-label">Repeat</p>
+  <div class="chip-row" id="repeatRow">
+    <button class="chip active" data-value="none" type="button">No repeat</button>
+    <button class="chip" data-value="daily" type="button">Daily</button>
+    <button class="chip" data-value="weekly" type="button">Weekly</button>
+    <button class="chip" data-value="monthly" type="button">Monthly</button>
+  </div>
+
+  <p class="sub-label" id="dateLabel">Date</p>
+  <div class="chip-row" id="dateRow">
+    <button class="chip active" data-value="today" type="button">Today</button>
+    <button class="chip" data-value="tomorrow" type="button">Tomorrow</button>
+    <button class="chip" data-value="pick" type="button">Choose date</button>
+  </div>
+  <input type="date" id="datePicker" hidden />
+
+  <div class="sheet-actions">
+    <button class="btn ghost" id="cancelAdd" type="button">Cancel</button>
+    <button class="btn primary" id="confirmAdd" type="button" disabled>Add task</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "repeat-todo-tasks-v2";
+  var WINDOW_DAYS = 14;
+
+  var agendaEl = document.getElementById("agenda");
+  var emptyEl = document.getElementById("emptyState");
+  var clearRow = document.getElementById("clearRow");
+  var clearBtn = document.getElementById("clearCompleted");
+  var statusLine = document.getElementById("statusLine");
+  var dateHeading = document.getElementById("dateHeading");
+
+  var fab = document.getElementById("openAdd");
+  var backdrop = document.getElementById("backdrop");
+  var sheet = document.getElementById("sheet");
+  var taskInput = document.getElementById("taskInput");
+  var repeatRow = document.getElementById("repeatRow");
+  var dateRow = document.getElementById("dateRow");
+  var dateLabel = document.getElementById("dateLabel");
+  var datePicker = document.getElementById("datePicker");
+  var confirmAdd = document.getElementById("confirmAdd");
+  var cancelAdd = document.getElementById("cancelAdd");
+
+  var selectedRecurrence = "none";
+  var selectedDateMode = "today";
+
+  function uid(){
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function loadTasks(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+
+  function saveTasks(t){ localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); }
+
+  var tasks = loadTasks();
+
+  function pad(n){ return n < 10 ? "0" + n : "" + n; }
+
+  function dateKey(d){ return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  function keyToDate(key){
+    var parts = key.split("-");
+    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  }
+
+  function addDays(d, n){
+    var copy = new Date(d.getTime());
+    copy.setDate(copy.getDate() + n);
+    return copy;
+  }
+
+  function startOfToday(){
+    var n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  }
+
+  function weekKey(d){
+    var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var day = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - day);
+    var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    var weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return date.getUTCFullYear() + "-W" + pad(weekNo);
+  }
+
+  function monthKey(d){ return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+
+  function periodKeyFor(recurrence, d){
+    if(recurrence === "daily") return dateKey(d);
+    if(recurrence === "weekly") return weekKey(d);
+    if(recurrence === "monthly") return monthKey(d);
+    return null;
+  }
+
+  function lastDayOfMonth(year, month){ return new Date(year, month + 1, 0).getDate(); }
+
+  function occursOn(task, day){
+    var dKey = dateKey(day);
+    if(task.recurrence === "none"){
+      return dKey === task.anchorDate;
+    }
+    if(dKey < task.anchorDate) return false;
+    var anchor = keyToDate(task.anchorDate);
+    if(task.recurrence === "daily") return true;
+    if(task.recurrence === "weekly") return day.getDay() === anchor.getDay();
+    if(task.recurrence === "monthly"){
+      var target = Math.min(anchor.getDate(), lastDayOfMonth(day.getFullYear(), day.getMonth()));
+      return day.getDate() === target;
+    }
+    return false;
+  }
+
+  function isDoneOn(task, day){
+    if(task.recurrence === "none") return !!task.done;
+    var period = periodKeyFor(task.recurrence, day);
+    return task.lastCompletedPeriod === period;
+  }
+
+  function toggleTaskOn(id, day){
+    tasks = tasks.map(function(t){
+      if(t.id !== id) return t;
+      if(t.recurrence === "none"){
+        return Object.assign({}, t, { done: !t.done });
+      }
+      var period = periodKeyFor(t.recurrence, day);
+      var currentlyDone = t.lastCompletedPeriod === period;
+      return Object.assign({}, t, { lastCompletedPeriod: currentlyDone ? null : period });
+    });
+    saveTasks(tasks);
+    render();
+  }
+
+  function deleteTask(id){
+    tasks = tasks.filter(function(t){ return t.id !== id; });
+    saveTasks(tasks);
+    render();
+  }
+
+  function addTask(text, recurrence, anchorDate){
+    tasks.push({
+      id: uid(),
+      text: text,
+      recurrence: recurrence,
+      anchorDate: anchorDate,
+      done: false,
+      lastCompletedPeriod: null,
+      createdAt: new Date().toISOString()
+    });
+    saveTasks(tasks);
+    render();
+  }
+
+  function recurrenceLabel(r){
+    if(r === "daily") return "Daily";
+    if(r === "weekly") return "Weekly";
+    if(r === "monthly") return "Monthly";
+    return "";
+  }
+
+  var repeatIconSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>';
+  var checkIconSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  var removeIconSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+  function renderTaskRow(task, day, done){
+    var li = document.createElement("li");
+    li.className = "task" + (done ? " done" : "");
+
+    var check = document.createElement("button");
+    check.className = "check";
+    check.setAttribute("aria-label", done ? "Mark as not done" : "Mark as done");
+    check.innerHTML = checkIconSVG;
+    check.addEventListener("click", function(){ toggleTaskOn(task.id, day); });
+
+    var text = document.createElement("p");
+    text.className = "text";
+    text.textContent = task.text;
+
+    li.appendChild(check);
+    li.appendChild(text);
+
+    if(task.recurrence !== "none"){
+      var badge = document.createElement("span");
+      badge.className = "badge";
+      badge.innerHTML = repeatIconSVG + "<span>" + recurrenceLabel(task.recurrence) + "</span>";
+      li.appendChild(badge);
+    }
+
+    var remove = document.createElement("button");
+    remove.className = "remove";
+    remove.setAttribute("aria-label", "Delete task");
+    remove.innerHTML = removeIconSVG;
+    remove.addEventListener("click", function(){ deleteTask(task.id); });
+    li.appendChild(remove);
+
+    return li;
+  }
+
+  function dayHeadingText(day, todayStart){
+    var diff = Math.round((day - todayStart) / 86400000);
+    if(diff === 0) return "Today";
+    if(diff === 1) return "Tomorrow";
+    return day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  function buildDaySection(day, todayStart){
+    var section = document.createElement("section");
+    section.className = "day-section";
+
+    var occurring = tasks
+      .filter(function(t){ return occursOn(t, day); })
+      .map(function(t){ return { task: t, done: isDoneOn(t, day) }; });
+
+    occurring.sort(function(a, b){ return (a.done === b.done) ? 0 : (a.done ? 1 : -1); });
+
+    var heading = document.createElement("div");
+    heading.className = "day-heading";
+    var label = document.createElement("span");
+    label.textContent = dayHeadingText(day, todayStart);
+    heading.appendChild(label);
+    if(occurring.length){
+      var doneCount = occurring.filter(function(e){ return e.done; }).length;
+      var count = document.createElement("span");
+      count.className = "count";
+      count.textContent = doneCount + " of " + occurring.length + " done";
+      heading.appendChild(count);
+    }
+    section.appendChild(heading);
+
+    if(occurring.length === 0){
+      var nothing = document.createElement("p");
+      nothing.className = "nothing";
+      nothing.textContent = "Nothing scheduled";
+      section.appendChild(nothing);
+      return section;
+    }
+
+    var ul = document.createElement("ul");
+    ul.className = "list";
+    occurring.forEach(function(entry){
+      ul.appendChild(renderTaskRow(entry.task, day, entry.done));
+    });
+    section.appendChild(ul);
+    return section;
+  }
+
+  function render(){
+    var todayStart = startOfToday();
+    agendaEl.innerHTML = "";
+
+    emptyEl.hidden = tasks.length !== 0;
+
+    var todayKey = dateKey(todayStart);
+    var overdue = tasks.filter(function(t){
+      return t.recurrence === "none" && !t.done && t.anchorDate < todayKey;
+    });
+
+    if(overdue.length){
+      var section = document.createElement("section");
+      section.className = "day-section overdue";
+      var heading = document.createElement("div");
+      heading.className = "day-heading";
+      heading.innerHTML = "<span>Overdue</span>";
+      section.appendChild(heading);
+      var ul = document.createElement("ul");
+      ul.className = "list";
+      overdue.forEach(function(t){
+        ul.appendChild(renderTaskRow(t, todayStart, false));
+      });
+      section.appendChild(ul);
+      agendaEl.appendChild(section);
+    }
+
+    for(var i = 0; i < WINDOW_DAYS; i++){
+      var day = addDays(todayStart, i);
+      agendaEl.appendChild(buildDaySection(day, todayStart));
+    }
+
+    var doneOneOff = tasks.filter(function(t){ return t.recurrence === "none" && t.done; });
+    clearRow.hidden = doneOneOff.length === 0;
+
+    var todayOccurring = tasks.filter(function(t){ return occursOn(t, todayStart); });
+    var todayDone = todayOccurring.filter(function(t){ return isDoneOn(t, todayStart); }).length;
+
+    if(tasks.length === 0){
+      statusLine.textContent = "A clear list.";
+    }else if(todayOccurring.length === 0){
+      statusLine.textContent = "Nothing scheduled for today.";
+    }else{
+      statusLine.innerHTML = "<strong>" + todayDone + "</strong> of " + todayOccurring.length + " done today";
+    }
+
+    dateHeading.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  }
+
+  clearBtn.addEventListener("click", function(){
+    tasks = tasks.filter(function(t){ return !(t.recurrence === "none" && t.done); });
+    saveTasks(tasks);
+    render();
+  });
+
+  function resetSheet(){
+    taskInput.value = "";
+    selectedRecurrence = "none";
+    selectedDateMode = "today";
+    datePicker.hidden = true;
+    datePicker.value = "";
+    dateLabel.textContent = "Date";
+    updateChips(repeatRow, "none");
+    updateChips(dateRow, "today");
+    updateConfirmState();
+  }
+
+  function openSheet(){
+    backdrop.classList.add("open");
+    sheet.classList.add("open");
+    resetSheet();
+    setTimeout(function(){ taskInput.focus(); }, 260);
+  }
+
+  function closeSheet(){
+    backdrop.classList.remove("open");
+    sheet.classList.remove("open");
+  }
+
+  function updateChips(row, value){
+    Array.prototype.forEach.call(row.children, function(chip){
+      chip.classList.toggle("active", chip.dataset.value === value);
+    });
+  }
+
+  function updateConfirmState(){
+    var hasText = taskInput.value.trim().length > 0;
+    var hasDate = selectedDateMode !== "pick" || !!datePicker.value;
+    confirmAdd.disabled = !(hasText && hasDate);
+  }
+
+  fab.addEventListener("click", openSheet);
+  cancelAdd.addEventListener("click", closeSheet);
+  backdrop.addEventListener("click", closeSheet);
+
+  repeatRow.addEventListener("click", function(e){
+    var chip = e.target.closest(".chip");
+    if(!chip) return;
+    selectedRecurrence = chip.dataset.value;
+    updateChips(repeatRow, selectedRecurrence);
+    dateLabel.textContent = selectedRecurrence === "none" ? "Date" : "Starting";
+  });
+
+  dateRow.addEventListener("click", function(e){
+    var chip = e.target.closest(".chip");
+    if(!chip) return;
+    selectedDateMode = chip.dataset.value;
+    updateChips(dateRow, selectedDateMode);
+    if(selectedDateMode === "pick"){
+      datePicker.hidden = false;
+      var minDate = dateKey(startOfToday());
+      datePicker.min = minDate;
+      if(!datePicker.value) datePicker.value = minDate;
+    }else{
+      datePicker.hidden = true;
+    }
+    updateConfirmState();
+  });
+
+  datePicker.addEventListener("change", updateConfirmState);
+  taskInput.addEventListener("input", updateConfirmState);
+
+  taskInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !confirmAdd.disabled) confirmAdd.click();
+  });
+
+  confirmAdd.addEventListener("click", function(){
+    var text = taskInput.value.trim();
+    if(!text) return;
+
+    var anchorDate;
+    if(selectedDateMode === "today"){
+      anchorDate = dateKey(startOfToday());
+    }else if(selectedDateMode === "tomorrow"){
+      anchorDate = dateKey(addDays(startOfToday(), 1));
+    }else{
+      anchorDate = datePicker.value || dateKey(startOfToday());
+    }
+
+    addTask(text, selectedRecurrence, anchorDate);
+    closeSheet();
+  });
+
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && sheet.classList.contains("open")) closeSheet();
+  });
+
+  render();
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
