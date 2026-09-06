@@ -117,6 +117,8 @@
     border-bottom: 1px solid var(--line);
   }
 
+  .date-strip-wrap{ touch-action: pan-y; }
+
   .date-strip{
     display: flex;
     gap: 4px;
@@ -625,6 +627,7 @@
   var selectedDateKey = null;
   var editingTaskId = null;
   var menuTaskId = null;
+  var currentWeekStart = null;
 
   function uid(){
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -1011,7 +1014,7 @@
   }
 
   function renderDateStrip(todayKey, selKey){
-    var weekStart = startOfWeek(keyToDate(todayKey));
+    var weekStart = currentWeekStart;
     dateStripEl.innerHTML = "";
 
     for(var i = 0; i < 7; i++){
@@ -1045,10 +1048,64 @@
     }
   }
 
+  function shiftWeek(dir){
+    currentWeekStart = addDays(currentWeekStart, dir * 7);
+    render();
+  }
+
+  (function initDateStripSwipe(){
+    var wrap = document.getElementById("dateStripWrap");
+    var pointerId = null;
+    var startX = 0, startY = 0;
+    var dragging = false;
+    var SWIPE_THRESHOLD = 40;
+
+    wrap.addEventListener("pointerdown", function(e){
+      if(e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragging = true;
+      dateStripEl.style.transition = "none";
+    });
+
+    wrap.addEventListener("pointermove", function(e){
+      if(!dragging || e.pointerId !== pointerId) return;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if(Math.abs(dx) > Math.abs(dy)){
+        if(e.cancelable) e.preventDefault();
+        dateStripEl.style.transform = "translateX(" + dx + "px)";
+      }
+    });
+
+    function finish(e){
+      if(!dragging || (e && e.pointerId !== pointerId)) return;
+      dragging = false;
+      pointerId = null;
+      var dx = e && e.clientX != null ? e.clientX - startX : 0;
+      var dy = e && e.clientY != null ? e.clientY - startY : 0;
+
+      dateStripEl.style.transition = "transform 0.18s ease";
+      dateStripEl.style.transform = "translateX(0px)";
+
+      if(Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)){
+        shiftWeek(dx < 0 ? 1 : -1);
+      }
+    }
+
+    wrap.addEventListener("pointerup", finish);
+    wrap.addEventListener("pointercancel", finish);
+    wrap.addEventListener("pointerleave", function(e){
+      if(dragging && e.pointerId === pointerId) finish(e);
+    });
+  })();
+
   function render(){
     var todayStart = startOfToday();
     var todayKey = dateKey(todayStart);
     if(!selectedDateKey) selectedDateKey = todayKey;
+    if(!currentWeekStart) currentWeekStart = startOfWeek(todayStart);
     var selDate = keyToDate(selectedDateKey);
 
     agendaEl.innerHTML = "";
