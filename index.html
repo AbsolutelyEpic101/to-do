@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Repeat — a simple to-do list</title>
+<title>To-Do — a simple to-do list</title>
 <meta name="description" content="A minimalist to-do list with recurring tasks, stored entirely on your device." />
 
 <link rel="manifest" href="manifest.json" />
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Repeat" />
+<meta name="apple-mobile-web-app-title" content="To-Do" />
 
 <style>
   :root{
@@ -30,7 +30,21 @@
     --radius: 14px;
   }
 
-  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  *{
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input, textarea{
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
 
   html, body{ height: 100%; }
 
@@ -835,11 +849,12 @@
 
       var pointerId = e.pointerId;
       var startY = e.clientY;
+      var active = true;
 
       li.classList.add("dragging");
-      try{ handle.setPointerCapture(pointerId); }catch(err){}
 
       function onMove(ev){
+        if(!active || ev.pointerId !== pointerId) return;
         var dy = ev.clientY - startY;
         li.style.transform = "translateY(" + dy + "px)";
 
@@ -865,21 +880,31 @@
         }
       }
 
-      function onUp(){
-        handle.removeEventListener("pointermove", onMove);
-        handle.removeEventListener("pointerup", onUp);
-        handle.removeEventListener("pointercancel", onUp);
+      function finish(ev){
+        if(!active) return;
+        if(ev && ev.pointerId !== pointerId) return;
+        active = false;
+
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", finish);
+        document.removeEventListener("pointercancel", finish);
+        try{ handle.releasePointerCapture(pointerId); }catch(err){}
+
         li.classList.remove("dragging");
         li.style.transform = "";
+        handle.blur();
+        if(document.activeElement && typeof document.activeElement.blur === "function"){
+          document.activeElement.blur();
+        }
 
         var newOrder = Array.prototype.map.call(list.children, function(c){ return c.dataset.taskId; });
         reorderTasksForDay(newOrder);
         render();
       }
 
-      handle.addEventListener("pointermove", onMove);
-      handle.addEventListener("pointerup", onUp);
-      handle.addEventListener("pointercancel", onUp);
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", finish);
+      document.addEventListener("pointercancel", finish);
     });
   }
 
