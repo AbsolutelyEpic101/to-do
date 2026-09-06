@@ -30,6 +30,12 @@
     --radius: 14px;
   }
 
+  html.dragging-active, body.dragging-active{
+    touch-action: none;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   *{
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
@@ -852,30 +858,40 @@
       var active = true;
 
       li.classList.add("dragging");
+      document.documentElement.classList.add("dragging-active");
+      document.body.classList.add("dragging-active");
+      try{ handle.setPointerCapture(pointerId); }catch(err){}
 
       function onMove(ev){
         if(!active || ev.pointerId !== pointerId) return;
+        if(ev.cancelable) ev.preventDefault();
         var dy = ev.clientY - startY;
         li.style.transform = "translateY(" + dy + "px)";
 
         var liRect = li.getBoundingClientRect();
         var liMid = liRect.top + liRect.height / 2;
-        var siblings = Array.prototype.filter.call(list.children, function(c){ return c !== li; });
 
-        for(var i = 0; i < siblings.length; i++){
-          var sib = siblings[i];
-          var r = sib.getBoundingClientRect();
-          var mid = r.top + r.height / 2;
-          if(dy < 0 && liMid < mid){
-            list.insertBefore(li, sib);
-            startY = ev.clientY;
-            li.style.transform = "translateY(0px)";
-            break;
-          }else if(dy > 0 && liMid > mid){
-            list.insertBefore(li, sib.nextSibling);
-            startY = ev.clientY;
-            li.style.transform = "translateY(0px)";
-            break;
+        if(dy < 0){
+          var prev = li.previousElementSibling;
+          if(prev){
+            var prevRect = prev.getBoundingClientRect();
+            var prevMid = prevRect.top + prevRect.height / 2;
+            if(liMid < prevMid){
+              list.insertBefore(li, prev);
+              startY = ev.clientY;
+              li.style.transform = "translateY(0px)";
+            }
+          }
+        }else if(dy > 0){
+          var next = li.nextElementSibling;
+          if(next){
+            var nextRect = next.getBoundingClientRect();
+            var nextMid = nextRect.top + nextRect.height / 2;
+            if(liMid > nextMid){
+              list.insertBefore(li, next.nextSibling);
+              startY = ev.clientY;
+              li.style.transform = "translateY(0px)";
+            }
           }
         }
       }
@@ -889,6 +905,8 @@
         document.removeEventListener("pointerup", finish);
         document.removeEventListener("pointercancel", finish);
         try{ handle.releasePointerCapture(pointerId); }catch(err){}
+        document.documentElement.classList.remove("dragging-active");
+        document.body.classList.remove("dragging-active");
 
         li.classList.remove("dragging");
         li.style.transform = "";
