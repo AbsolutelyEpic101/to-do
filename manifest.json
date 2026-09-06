@@ -1,6 +1,6 @@
 {
-  "name": "Repeat — a simple to-do list",
-  "short_name": "Repeat",
+  "name": "To-Do: a simple to-do list app",
+  "short_name": "To-Do",
   "description": "A minimalist to-do list with recurring tasks, stored entirely on your device.",
   "start_url": "./index.html",
   "scope": "./",
